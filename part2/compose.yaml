@@ -1,15 +1,22 @@
-services:
+﻿services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "${APP_PORT}:8000"
     environment:
       PORT: "8000"
       DATA_DIR: "/data"
+    expose:
+      - "8000"
     volumes:
       - queue-data:/data
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${APP_PORT}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   queue-data:
