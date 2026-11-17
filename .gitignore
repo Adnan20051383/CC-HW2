@@ -1,0 +1,19 @@
+﻿# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Local test evidence
+/part2-tests-baseline.txt
+/part2-tests-success.txt
