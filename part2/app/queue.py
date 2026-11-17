@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import os
-from pathlib import Path
 import tempfile
+from contextlib import contextmanager
+from pathlib import Path
 
 try:
     import fcntl

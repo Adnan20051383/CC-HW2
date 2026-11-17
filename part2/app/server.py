@@ -40,16 +40,16 @@ def serve(host: str, port: int, data_dir: str) -> None:
                     data = json.loads(raw_body.decode("utf-8"))
 
                     if not isinstance(data, dict):
-                        raise ValueError("Invalid request")
+                        raise TypeError("Invalid request")
 
                     name = data.get("name")
 
                     if not isinstance(name, str):
-                        raise ValueError("Invalid name")
+                        raise TypeError("Invalid name")
 
                     ticket = join(queue_path, name)
 
-                except (ValueError, UnicodeDecodeError):
+                except (TypeError, ValueError, UnicodeDecodeError):
                     self.send_text(400, "invalid name")
                     return
 
