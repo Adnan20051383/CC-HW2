@@ -1,0 +1,103 @@
+name: Deploy Historical Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to deploy, e.g. v1.0.0-abcdef0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Selected Historical Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate and Checkout Requested Tag
+        id: selected
+        shell: bash
+        env:
+          DEPLOY_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "${DEPLOY_TAG}" =~ ^v1\.0\.0-[0-9a-f]{7}$ ]]; then
+            echo "::error::Invalid release tag format: ${DEPLOY_TAG}"
+            exit 1
+          fi
+
+          if ! git fetch --force origin \
+            "refs/tags/${DEPLOY_TAG}:refs/tags/${DEPLOY_TAG}"; then
+            echo "::error::Requested Git tag does not exist."
+            exit 1
+          fi
+
+          if ! git rev-parse --verify --quiet \
+            "refs/tags/${DEPLOY_TAG}^{commit}" > /dev/null; then
+            echo "::error::Tag does not point to a commit."
+            exit 1
+          fi
+
+          git checkout --detach "refs/tags/${DEPLOY_TAG}"
+
+          echo "version=${DEPLOY_TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare Historical Website
+        env:
+          VERSION: ${{ steps.selected.outputs.version }}
+        run: |
+          mkdir -p _site
+          cp -R part2/site/. _site/
+
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          index = Path("_site/index.html")
+          html = index.read_text(encoding="utf-8")
+
+          marker = '<p id="version">__VERSION__</p>'
+
+          if html.count(marker) != 1:
+              raise SystemExit(
+                  "Expected exactly one version element placeholder."
+              )
+
+          html = html.replace(
+              marker,
+              f'<p id="version">{version}</p>',
+              1,
+          )
+
+          index.write_text(html, encoding="utf-8")
+          print(f"Prepared historical website version: {version}")
+          PY
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy Historical Version
+        id: deployment
+        uses: actions/deploy-pages@v4
